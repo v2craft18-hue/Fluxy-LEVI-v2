@@ -2,6 +2,11 @@
 // FLUXY — Layout Autenticado
 // ================================================================
 
+// Força todas as rotas sob /(app)/ a rodarem em runtime (não prerender).
+// Necessário porque usam Supabase Auth que depende de cookies e env vars
+// disponíveis apenas em runtime, não durante o build estático.
+export const dynamic = 'force-dynamic'
+
 import { createServerSupabase } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/Sidebar'
