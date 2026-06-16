@@ -3,7 +3,6 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -17,7 +16,6 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -27,13 +25,22 @@ export default function LoginPage() {
   async function onSubmit(data: FormData) {
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({
-      email: data.email.trim().toLowerCase(),
-      password: data.senha,
+
+    const email = data.email.trim().toLowerCase()
+    const password = data.senha
+
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     })
+
     if (error) {
-      console.log('[v0] Erro login Supabase:', error.message, '| status:', error.status, '| code:', error.code)
-      // Mensagem amigável baseada no código de erro do Supabase
+      console.error('[Fluxy] Erro signInWithPassword:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+      })
+
       if (
         error.message.includes('Invalid login credentials') ||
         error.message.includes('invalid_credentials') ||
@@ -44,15 +51,23 @@ export default function LoginPage() {
         error.message.includes('Email not confirmed') ||
         error.code === 'email_not_confirmed'
       ) {
-        toast.error('E-mail não confirmado. Verifique sua caixa de entrada ou peça ao administrador para reativar seu acesso.')
+        toast.error('E-mail não confirmado. Peça ao administrador para reativar seu acesso.')
       } else {
         toast.error(error.message || 'Erro ao fazer login. Tente novamente.')
       }
       setLoading(false)
       return
     }
-    router.push('/dashboard')
-    router.refresh()
+
+    // Sessão criada com sucesso — navegar via window.location para garantir
+    // que o cookie de sessão seja lido pelo middleware antes do carregamento.
+    if (authData.session) {
+      window.location.href = '/dashboard'
+    } else {
+      // Fallback: sessão não retornada (improvável com signInWithPassword)
+      toast.error('Sessão não iniciada. Tente novamente.')
+      setLoading(false)
+    }
   }
 
   return (
