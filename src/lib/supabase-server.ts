@@ -4,8 +4,10 @@
 
 import { createServerClient, type CookieMethodsServer } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { getSupabaseEnv } from './env'
 
 export async function createServerSupabase() {
+  const { url, anonKey } = getSupabaseEnv()
   const cookieStore = await cookies()
 
   const cookieMethods: CookieMethodsServer = {
@@ -23,9 +25,5 @@ export async function createServerSupabase() {
     },
   }
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: cookieMethods }
-  )
+  return createServerClient(url, anonKey, { cookies: cookieMethods })
 }
