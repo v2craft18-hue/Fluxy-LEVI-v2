@@ -8,13 +8,12 @@ import { toast } from 'sonner'
 import type { Usuario, Perfil } from '@/types'
 import { useAppStore } from '@/store'
 
-const supabase = createClient()
-
 // ── Listar usuários da empresa ──────────────────────────────────
 export function useUsuarios() {
   return useQuery({
     queryKey: ['usuarios'],
     queryFn: async () => {
+      const supabase = createClient()
       const { data, error } = await supabase
         .from('usuarios')
         .select('id, nome, email, perfil, ativo, tel, whatsapp, avatar_url, ultimo_acesso, criado_em, atualizado_em')
@@ -50,7 +49,6 @@ export function useCriarUsuario() {
       const json = await res.json()
 
       if (!res.ok) {
-        // Para erros de configuração (503), expor o detalhe técnico também
         const mensagem = res.status === 503 && json.detalhe
           ? `${json.error} ${json.detalhe}`
           : (json.error || 'Erro ao criar usuário.')
@@ -82,6 +80,7 @@ export function useEditarUsuario() {
 
   return useMutation({
     mutationFn: async (form: EditarUsuarioForm) => {
+      const supabase = createClient()
       const { id, ...rest } = form
       const { error } = await supabase
         .from('usuarios')
@@ -103,6 +102,7 @@ export function useAlternarStatusUsuario() {
 
   return useMutation({
     mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
+      const supabase = createClient()
       const { error } = await supabase
         .from('usuarios')
         .update({ ativo })
@@ -130,7 +130,7 @@ export function useExcluirUsuario() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Erro ao excluir usuário.')
-      return json   // inclui { ok, modo, aviso? }
+      return json
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['usuarios'] })
@@ -181,17 +181,16 @@ export function useAtualizarMeuPerfil() {
 
   return useMutation({
     mutationFn: async (form: AtualizarPerfilForm) => {
+      const supabase = createClient()
       if (!usuario?.id) throw new Error('Usuário não identificado')
       const { error } = await supabase
         .from('usuarios')
         .update(form)
         .eq('id', usuario.id)
       if (error) throw error
-      // Atualizar também o auth metadata
       await supabase.auth.updateUser({ data: { nome: form.nome } })
     },
     onSuccess: (_, form) => {
-      // Atualizar store local
       if (usuario) {
         setUsuario({ ...usuario, ...form }, empresaId)
       }
@@ -206,7 +205,7 @@ export function useAtualizarMeuPerfil() {
 export function useAlterarSenha() {
   return useMutation({
     mutationFn: async ({ senhaAtual, novaSenha }: { senhaAtual: string; novaSenha: string }) => {
-      // Re-autenticar com senha atual para verificar
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user?.email) throw new Error('Usuário não encontrado')
 
@@ -231,6 +230,7 @@ export function useUploadAvatar() {
 
   return useMutation({
     mutationFn: async (file: File) => {
+      const supabase = createClient()
       if (!usuario?.id) throw new Error('Usuário não identificado')
       const ext = file.name.split('.').pop()
       const path = `${usuario.id}/avatar.${ext}`

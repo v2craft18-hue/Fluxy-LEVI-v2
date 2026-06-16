@@ -28,11 +28,26 @@ export default function LoginPage() {
     setLoading(true)
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
+      email: data.email.trim().toLowerCase(),
       password: data.senha,
     })
     if (error) {
-      toast.error('E-mail ou senha incorretos.')
+      console.log('[v0] Erro login Supabase:', error.message, '| status:', error.status, '| code:', error.code)
+      // Mensagem amigável baseada no código de erro do Supabase
+      if (
+        error.message.includes('Invalid login credentials') ||
+        error.message.includes('invalid_credentials') ||
+        error.code === 'invalid_credentials'
+      ) {
+        toast.error('E-mail ou senha incorretos. Verifique os dados e tente novamente.')
+      } else if (
+        error.message.includes('Email not confirmed') ||
+        error.code === 'email_not_confirmed'
+      ) {
+        toast.error('E-mail não confirmado. Verifique sua caixa de entrada ou peça ao administrador para reativar seu acesso.')
+      } else {
+        toast.error(error.message || 'Erro ao fazer login. Tente novamente.')
+      }
       setLoading(false)
       return
     }
