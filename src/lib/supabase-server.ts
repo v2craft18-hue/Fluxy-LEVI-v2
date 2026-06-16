@@ -5,7 +5,20 @@
 import { createServerClient, type CookieMethodsServer } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+function getEnvVars() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) {
+    throw new Error(
+      '[Fluxy] Variáveis de ambiente do Supabase não encontradas. ' +
+      'Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+    )
+  }
+  return { url, key }
+}
+
 export async function createServerSupabase() {
+  const { url, key } = getEnvVars()
   const cookieStore = await cookies()
 
   const cookieMethods: CookieMethodsServer = {
@@ -23,9 +36,5 @@ export async function createServerSupabase() {
     },
   }
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: cookieMethods }
-  )
+  return createServerClient(url, key, { cookies: cookieMethods })
 }

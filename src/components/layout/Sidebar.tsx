@@ -52,12 +52,12 @@ export function Sidebar({ usuario, empresa }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const supabase = createClient()
 
   const itens = NAV.filter(n => n.perfis.includes(usuario.perfil))
   const inicial = usuario.nome.charAt(0).toUpperCase()
 
   async function handleLogout() {
+    const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
   }

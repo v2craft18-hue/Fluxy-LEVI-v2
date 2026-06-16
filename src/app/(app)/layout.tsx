@@ -22,11 +22,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!usuario || !usuario.ativo) redirect('/login')
 
-  // Buscar empresa
-  const { data: empresa } = await supabase
-    .from('empresas')
-    .select('*')
-    .single()
+  // Buscar empresa pelo empresa_id do usuário (filtro obrigatório para multi-tenant)
+  const { data: empresa } = usuario.empresa_id
+    ? await supabase
+        .from('empresas')
+        .select('*')
+        .eq('id', usuario.empresa_id)
+        .single()
+    : { data: null }
 
   return (
     <div className="flex min-h-screen bg-[#f5f4f1]">

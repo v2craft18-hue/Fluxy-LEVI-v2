@@ -10,11 +10,21 @@ import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
 const PUBLIC_ROUTES = ['/login', '/register', '/api/webhook']
 
 export async function middleware(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // Guard: se as variáveis não estiverem definidas, deixa passar para não
+  // travar toda a aplicação — o erro será visível nas páginas que usam Supabase.
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('[Fluxy] NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY não definidas no middleware.')
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() { return request.cookies.getAll() },
