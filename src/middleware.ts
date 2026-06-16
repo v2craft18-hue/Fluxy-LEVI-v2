@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
 
 // Rotas públicas — não requerem autenticação
-const PUBLIC_ROUTES = ['/login', '/register', '/api/webhook']
+const PUBLIC_ROUTES = ['/login', '/register', '/api/webhook', '/api/register']
 
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
