@@ -22,14 +22,10 @@ function getEnvVars() {
   return { url, key }
 }
 
-// ── Cliente browser (singleton — preserva cookies de sessão entre chamadas) ──
-let browserClient: ReturnType<typeof createBrowserClient> | null = null
-
+// ── Cliente browser (componentes client-side) ──
 export function createClient() {
-  if (browserClient) return browserClient
   const { url, key } = getEnvVars()
-  browserClient = createBrowserClient(url, key)
-  return browserClient
+  return createBrowserClient(url, key)
 }
 
 // ── Helpers de queries reutilizáveis ──

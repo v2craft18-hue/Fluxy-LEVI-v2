@@ -34,6 +34,11 @@ export default function RegisterPage() {
   async function onSubmit(data: FormData) {
     setLoading(true)
     try {
+      console.log('[Fluxy-Register] Enviando formulário:', { 
+        empresa_nome: data.empresa_nome,
+        email: data.email 
+      })
+      
       // Usa a API server-side com service_role para criar o usuário
       // com email_confirm: true — sem necessidade de confirmação por e-mail.
       const res = await fetch('/api/register', {
@@ -48,13 +53,33 @@ export default function RegisterPage() {
         }),
       })
 
-      const json = await res.json()
+      console.log('[Fluxy-Register] Response status:', res.status, res.statusText)
+      
+      // Verificar se response é válida antes de tentar fazer parse
       if (!res.ok) {
+        const text = await res.text()
+        console.error('[Fluxy-Register] Erro na resposta:', text)
+        
+        // Tentar parsear como JSON se possível
+        try {
+          const json = JSON.parse(text)
+          throw new Error(json.error || 'Erro ao criar conta.')
+        } catch (e) {
+          // Se não for JSON válido, mostrar erro genérico
+          throw new Error(`Erro do servidor (${res.status}): ${text || 'Resposta vazia'}`)
+        }
+      }
+
+      const json = await res.json()
+      console.log('[Fluxy-Register] Resposta JSON:', json)
+      
+      if (!json.ok) {
         throw new Error(json.error || 'Erro ao criar conta.')
       }
 
       setStep('confirmacao')
     } catch (e: unknown) {
+      console.error('[Fluxy-Register] Exception:', e)
       toast.error((e as Error).message || 'Erro ao criar conta')
     } finally {
       setLoading(false)

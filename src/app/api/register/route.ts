@@ -22,10 +22,13 @@ function traduzirErroAuth(msg: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('[Fluxy-Auth] POST /api/register iniciado')
+    
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 
     if (!serviceKey || !supabaseUrl) {
+      console.error('[Fluxy-Auth] SERVICE_ROLE_KEY ou URL não configurados')
       return NextResponse.json(
         { error: 'Configuração de servidor incompleta. Contate o suporte.' },
         { status: 503 }
@@ -33,6 +36,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
+    console.log('[Fluxy-Auth] Body recebido:', { 
+      empresa_nome: body.empresa_nome, 
+      email: body.email,
+      admin_nome: body.admin_nome
+    })
+    
     const { empresa_nome, empresa_email, admin_nome, email, senha } = body
 
     if (!empresa_nome?.trim()) return NextResponse.json({ error: 'Nome da empresa obrigatório.' }, { status: 400 })
@@ -48,6 +57,7 @@ export async function POST(req: NextRequest) {
     )
 
     // 1. Criar usuário no Supabase Auth com e-mail já confirmado
+    console.log('[Fluxy-Auth] Criando usuário Auth...')
     const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
       email: email.trim().toLowerCase(),
       password: senha,
@@ -56,11 +66,14 @@ export async function POST(req: NextRequest) {
     })
 
     if (authErr) {
-      console.log('[v0] Erro ao criar usuário Auth no register:', authErr.message)
+      console.error('[Fluxy-Auth] Erro ao criar usuário Auth:', authErr.message)
       return NextResponse.json({ error: traduzirErroAuth(authErr.message) }, { status: 422 })
     }
 
+    console.log('[Fluxy-Auth] Usuário Auth criado:', authData.user.id)
+
     // 2. Chamar RPC para criar empresa + vincular admin
+    console.log('[Fluxy-Auth] Chamando RPC criar_empresa_com_admin...')
     const { error: rpcErr } = await adminClient.rpc('criar_empresa_com_admin', {
       p_empresa_nome:   empresa_nome.trim(),
       p_empresa_email:  empresa_email?.trim() || email.trim().toLowerCase(),
@@ -69,19 +82,21 @@ export async function POST(req: NextRequest) {
     })
 
     if (rpcErr) {
+      console.error('[Fluxy-Auth] Erro RPC criar_empresa_com_admin:', rpcErr.message)
       // Rollback: remover usuário do auth para não deixar conta órfã
       await adminClient.auth.admin.deleteUser(authData.user.id)
-      console.log('[v0] Erro RPC criar_empresa_com_admin:', rpcErr.message)
       return NextResponse.json(
         { error: 'Erro ao configurar empresa. Tente novamente.', detalhe: rpcErr.message },
         { status: 500 }
       )
     }
 
+    console.log('[Fluxy-Auth] Empresa criada com sucesso para user:', authData.user.id)
     return NextResponse.json({ ok: true, userId: authData.user.id })
 
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro interno no servidor.'
+    console.error('[Fluxy-Auth] Exception em POST /api/register:', msg, e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

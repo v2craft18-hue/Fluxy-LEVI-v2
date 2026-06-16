@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -16,6 +17,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -59,10 +61,9 @@ export default function LoginPage() {
       return
     }
 
-    // Sessão criada com sucesso — navegar via window.location para garantir
-    // que o cookie de sessão seja lido pelo middleware antes do carregamento.
+    // Sessão criada com sucesso — navegar para dashboard
     if (authData.session) {
-      window.location.href = '/dashboard'
+      router.push('/dashboard')
     } else {
       // Fallback: sessão não retornada (improvável com signInWithPassword)
       toast.error('Sessão não iniciada. Tente novamente.')

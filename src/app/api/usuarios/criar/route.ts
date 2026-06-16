@@ -27,9 +27,12 @@ function traduzirErroAuth(msg: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('[Fluxy-Usuarios] POST /api/usuarios/criar iniciado')
+    
     // ── 1. Verificar SERVICE_ROLE_KEY ────────────────────────────
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!serviceKey) {
+      console.error('[Fluxy-Usuarios] SERVICE_ROLE_KEY não definida')
       return NextResponse.json(
         {
           error: 'Configuração de servidor incompleta.',
@@ -43,6 +46,13 @@ export async function POST(req: NextRequest) {
 
     // ── 2. Validar corpo da requisição ───────────────────────────
     const body = await req.json()
+    console.log('[Fluxy-Usuarios] Body recebido:', { 
+      nome: body.nome, 
+      email: body.email,
+      perfil: body.perfil,
+      empresa_id: body.empresa_id
+    })
+    
     const { nome, email, senha, perfil, empresa_id } = body
 
     if (!nome?.trim())       return NextResponse.json({ error: 'Nome é obrigatório.' }, { status: 400 })
@@ -64,9 +74,11 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 3. Autenticar o chamador e verificar permissões ──────────
+    console.log('[Fluxy-Usuarios] Verificando autenticação e permissões...')
     const supabaseUser = await createServerSupabase()
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
     if (authError || !user) {
+      console.error('[Fluxy-Usuarios] Sessão expirada ou não autenticado')
       return NextResponse.json({ error: 'Sessão expirada. Faça login novamente.' }, { status: 401 })
     }
 
@@ -77,6 +89,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (perfilError || !meuPerfil) {
+      console.error('[Fluxy-Usuarios] Perfil do usuário não encontrado:', perfilError?.message)
       return NextResponse.json({ error: 'Perfil do administrador não encontrado.' }, { status: 403 })
     }
     if (!meuPerfil.ativo) {
@@ -89,7 +102,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Operação não permitida para esta empresa.' }, { status: 403 })
     }
 
+    console.log('[Fluxy-Usuarios] Permissões verificadas. Admin:', user.id)
+
     // ── 4. Criar conta em auth.users via Admin API ───────────────
+    console.log('[Fluxy-Usuarios] Criando usuário Auth...')
     const adminClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       serviceKey,
@@ -104,13 +120,17 @@ export async function POST(req: NextRequest) {
     })
 
     if (authErr) {
+      console.error('[Fluxy-Usuarios] Erro ao criar usuário Auth:', authErr.message)
       return NextResponse.json(
         { error: traduzirErroAuth(authErr.message) },
         { status: 422 }
       )
     }
 
+    console.log('[Fluxy-Usuarios] Usuário Auth criado:', authUser.user.id)
+
     // ── 5. Criar registro em public.usuarios ─────────────────────
+    console.log('[Fluxy-Usuarios] Criando registro em public.usuarios...')
     const { error: dbErr } = await supabaseUser
       .from('usuarios')
       .insert({
@@ -123,6 +143,7 @@ export async function POST(req: NextRequest) {
       })
 
     if (dbErr) {
+      console.error('[Fluxy-Usuarios] Erro ao criar registro em public.usuarios:', dbErr.message)
       // Rollback: remover do auth para não deixar conta órfã
       await adminClient.auth.admin.deleteUser(authUser.user.id)
       return NextResponse.json(
@@ -130,6 +151,8 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       )
     }
+
+    console.log('[Fluxy-Usuarios] Usuário criado com sucesso:', authUser.user.id)
 
     // ── 6. Sucesso ───────────────────────────────────────────────
     return NextResponse.json({
@@ -140,6 +163,7 @@ export async function POST(req: NextRequest) {
 
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro interno no servidor.'
+    console.error('[Fluxy-Usuarios] Exception em POST /api/usuarios/criar:', msg, e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
